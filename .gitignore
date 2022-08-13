@@ -1,0 +1,8 @@
+.env
+node_modules/
+secrets/*
+!secrets/.gitkeep
+docker-compose.yml
+
+# ignore saved email attachment
+public/attachment/**/*

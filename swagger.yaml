@@ -1,0 +1,413 @@
+openapi: 3.0.0
+
+info:
+  title: Mail2voicemail swagger API Doc
+  description: Swagger documentation of Mail2voicemail API
+  version: "1.0"
+  contact:
+    name: Developer
+    email: antoniusferiantoaulia@gmail.com
+
+servers:
+  - url: http://localhost:5500/api
+    description: Development url
+  - url: https://mail2voicemail.com/api
+    description: Production ready url
+
+paths:
+  /auth/login:
+    post:
+      summary: Login API for all user.
+      description: This API used to login for all user and all role.
+      tags:
+        - auth
+
+      requestBody:
+        $ref: '#/components/requestBodies/Login'
+
+      responses:
+        '403':
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+              example:
+                meta:
+                  message: invalid email or password
+        '200':
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    type: object
+                    properties:
+                      message:
+                        type: string
+                  data:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      email:
+                        type: string
+                        format: email
+                      role:
+                        type: string
+                      companyId:
+                        type: integer
+                        nullable: true
+                      companyName:
+                        type: string
+                        nullable: true
+                      token:
+                        type: string
+              examples:
+                superadmin:
+                  value:
+                    meta:
+                      message: login success
+                    data:
+                      username: super admin
+                      email: super@adminmail.com
+                      role: superadmin
+                      companyId: null
+                      companyName: null
+                      token: bearertoken
+                company_admin:
+                  value:
+                    meta:
+                      message: login success
+                    data:
+                      username: company 1 admin
+                      email: admin@company1.com
+                      role: company_admin
+                      companyId: 2
+                      companyName: Company 1 inc.
+                      token: bearertoken
+                company_user:
+                  value:
+                    meta:
+                      message: login success
+                    data:
+                      username: company 1 user A
+                      email: user@company1.com
+                      role: company_user
+                      companyId: 2
+                      companyName: Company 1 inc.
+                      token: bearertoken
+
+  # user path
+  /user:
+    post:
+      summary: Create new user.
+      description: >
+        This API create new user. only accessible by: <br>
+        superadmin: to create **company_admin** <br>
+        company_admin: to create **company_user**
+      tags:
+        - user
+      security:
+        - BearerAuth: []
+
+      requestBody:
+        $ref: '#/components/requestBodies/NewUser'
+
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/ValidationErrors'
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BasicCompany'
+
+  # company path
+  /company:
+    get:
+      summary: Get all company.
+      description: >
+        This API create new company. only accessible by: **superadmin**
+      tags:
+        - company
+      security:
+        - BearerAuth: []
+      parameters:
+      - in: query
+        name: search
+        description: search company name contain string
+        required: false
+        schema:
+          type: string
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BasicCompany'
+
+    post:
+      summary: Create new company.
+      description: >
+        This API create new company. only accessible by: **superadmin**
+      tags:
+        - company
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  minLength: 5
+                  maxLength: 64
+                  description: Company name unique globally.
+                email_dest:
+                  type: array
+                  items:
+                    type: string
+                    format: email
+                  minItems: 1
+                  description: all value inside this array must be unique.
+                base_path:
+                  type: string
+                  pattern: '^[a-zA-Z0-9]+$'
+                storage_size:
+                  type: integer
+                  minimum: 1
+            example:
+              name: mail2voicemail
+              email_dest:
+              - mail_xxx1@mail2voicemail.com
+              - mail_xxx2@mail2voicemail.com
+              base_path: mail2voicemail
+              storage_size: 3
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '400':
+          $ref: '#/components/responses/ValidationErrors'
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  data:
+                    $ref: '#/components/schemas/BasicCompany'
+
+  /company/{id}:
+    get:
+      summary: Get all company.
+      description: >
+        This API create new company. only accessible by: **superadmin**
+      tags:
+        - company
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: id
+          description: company id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  meta:
+                    $ref: '#/components/schemas/Meta'
+                  data:
+                    $ref: '#/components/schemas/BasicCompany'
+
+components:
+  schemas:
+    Meta:
+      type: object
+      properties:
+        message:
+          type: string
+
+    BasicCompany:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: this is company id
+        name:
+          type: string
+          description: company name
+        email_dest:
+          type: array
+          items:
+            type: string
+            format: email
+        base_path:
+          type: string
+          description: company attachment base path
+        storage_size:
+          type: integer
+          description: company storage size defined by superadmin
+        user_count:
+          type: integer
+          description: company user total
+        created_at:
+          type: string
+          format: date-time
+          description: datetime company created
+
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  requestBodies:
+    Login:
+      description: Login request body.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+                format: password
+                minLength: 8
+                maxLength: 32
+          example:
+            email: user@mail.com
+            password: SuperrStr0ngPassworD
+
+    NewUser:
+      description: Request body to create new user.
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              username:
+                type: string
+                minLength: 5
+                maxLength: 64
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+                format: password
+                minLength: 8
+                maxLength: 32
+              role:
+                type: string
+                enum: [superuser, company_admin, company_user]
+              companyId:
+                type: integer
+                nullable: true
+                minimum: 1
+          examples:
+            superadmin:
+              value:
+                username: constant admin
+                email: admin@email.com
+                password: superstrong_password
+                role: superadmin
+                companyId: null
+            company_admin:
+              value:
+                username: company admin
+                email: admin@company.com
+                password: superstrong_password
+                role: company_admin
+                companyId: 1
+            company_user:
+              value:
+                username: company user
+                email: user@company.com
+                password: superstrong_password
+                role: company_user
+                companyId: 1
+
+  responses:
+    Unauthorized:
+      description: unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              meta:
+                $ref: '#/components/schemas/Meta'
+
+    ValidationErrors:
+      description: Request body validation error
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    value: {}
+                    msg:
+                      type: string
+                      description: error message
+                    param:
+                      type: string
+                      description: what param is error located
+                    location:
+                      type: string
+                      description: error param location
+
